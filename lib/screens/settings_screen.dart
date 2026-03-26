@@ -23,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late DetectionThresholds _thresholds;
+  late bool _detectionEnabled;
 
   @override
   void initState() {
@@ -33,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       gForceThreshold: widget.thresholds.gForceThreshold,
       gyroThreshold: widget.thresholds.gyroThreshold,
     );
+    _detectionEnabled = widget.detectionEnabled;
   }
 
   void _notifyChange() {
@@ -64,8 +66,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _toggleCard(
             'Crash Detection Active',
             'Toggle the crash detection engine',
-            widget.detectionEnabled,
-            widget.onToggleDetection,
+            _detectionEnabled,
+            (bool value) {
+              setState(() => _detectionEnabled = value);
+              widget.onToggleDetection(value);
+            },
           ),
           const SizedBox(height: 24),
 

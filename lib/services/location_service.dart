@@ -10,6 +10,8 @@ class LocationService {
   StreamSubscription<Position>? _positionSubscription;
   double _currentSpeedKmh = 0.0;
   double _previousSpeedKmh = 0.0;
+  Position? _previousPosition;
+  DateTime? _previousTime;
 
   double get currentSpeedKmh => _currentSpeedKmh;
   double get previousSpeedKmh => _previousSpeedKmh;
@@ -35,13 +37,57 @@ class LocationService {
     _positionSubscription =
         Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((Position position) {
+      
+      // 1. Filter out highly inaccurate GPS points (e.g. indoors/bad signal)
+      if (position.accuracy > 20.0) {
+        print('Ignored inaccurate GPS point: ${position.accuracy}m');
+        return;
+      }
+
       _previousSpeedKmh = _currentSpeedKmh;
 
-      // GPS gives speed in m/s → convert to km/h
-      _currentSpeedKmh =
-          (position.speed < 0 ? 0 : position.speed) * 3.6;
+      double rawSpeed = position.speed;
+      
+      // 2. Manual calculation fallback with stricter jitter threshold
+      if (rawSpeed <= 0 && _previousPosition != null && _previousTime != null) {
+        final now = DateTime.now();
+        final timeDiffSeconds = now.difference(_previousTime!).inMilliseconds / 1000.0;
+        
+        if (timeDiffSeconds > 0) {
+          final distanceMeters = Geolocator.distanceBetween(
+            _previousPosition!.latitude,
+            _previousPosition!.longitude,
+            position.latitude,
+            position.longitude,
+          );
+          
+          // Ignore tiny positional jitter (< 3 meters) to prevent fake speeds while standing still
+          if (distanceMeters > 3.0) { 
+            rawSpeed = distanceMeters / timeDiffSeconds;
+            print('Calculated manual speed: $rawSpeed m/s');
+          } else {
+            rawSpeed = 0.0; // Snap to 0 if we didn't move far enough
+          }
+        }
+      }
+
+      // Convert m/s -> km/h
+      double newSpeedKmh = (rawSpeed < 0 ? 0 : rawSpeed) * 3.6;
+
+      // 3. Low-pass filter to smooth out erratic jumps (fake speed spikes)
+      // Blend 70% of the new speed with 30% of the old speed to smooth it
+      if (newSpeedKmh > 0 && _currentSpeedKmh > 0) {
+        _currentSpeedKmh = (_currentSpeedKmh * 0.3) + (newSpeedKmh * 0.7);
+      } else {
+        _currentSpeedKmh = newSpeedKmh;
+      }
+
+      print('Final Smoothed Speed: $_currentSpeedKmh km/h (Raw was $newSpeedKmh)');
 
       _speedController.add(_currentSpeedKmh);
+      
+      _previousPosition = position;
+      _previousTime = DateTime.now();
     });
   }
 

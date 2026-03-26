@@ -20,7 +20,7 @@ class AlertService {
     await _audioPlayer.setReleaseMode(ReleaseMode.loop);
     await _audioPlayer.setVolume(1.0);
     try {
-      await _audioPlayer.play(AssetSource('sounds/alarm.mp3'));
+      await _audioPlayer.play(AssetSource('sounds/soundreality-civil-defense-siren-128262.mp3'));
     } catch (e) {
       // Sound file might not exist in simulator; ignore
     }

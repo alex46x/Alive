@@ -15,7 +15,7 @@ class CrashDetectorService {
   DetectionState _state = DetectionState.idle;
   DetectionState get state => _state;
 
-  double _previousSpeedKmh = 0.0;
+  final List<_SpeedRecord> _speedHistory = [];
   DateTime? _armedAt;
 
   // Crash event callback
@@ -90,49 +90,51 @@ class CrashDetectorService {
     final gForce = sensorService.peakGForce;
     final angularVelocity = sensorService.peakAngularVelocity;
 
+    // Maintain speed history window (keep past 4 seconds of data)
+    final now = DateTime.now();
+    _speedHistory.add(_SpeedRecord(time: now, speed: currentSpeed));
+    _speedHistory.removeWhere((r) => now.difference(r.time).inSeconds > 4);
+
     // === STATE MACHINE ===
 
-    // IDLE → ARMED: User must be going fast enough
     if (_state == DetectionState.idle) {
       if (currentSpeed >= thresholds.minSpeedKmh) {
         _state = DetectionState.armed;
-        _armedAt = DateTime.now();
-        _previousSpeedKmh = currentSpeed;
+        _armedAt = now;
       }
       return;
     }
 
-    // ARMED: Monitor for crash conditions
     if (_state == DetectionState.armed) {
-      // Disarm if speed drops to 0 slowly (normal stop) - check elapsed time
-      // We only keep armed for 10 seconds after arming
       if (_armedAt != null) {
-        final elapsed = DateTime.now().difference(_armedAt!).inSeconds;
+        final elapsed = now.difference(_armedAt!).inSeconds;
         if (elapsed > 10 && currentSpeed < thresholds.minSpeedKmh) {
           _state = DetectionState.idle;
-          _previousSpeedKmh = 0;
+          _speedHistory.clear();
           return;
         }
       }
 
-      final speedDrop = _previousSpeedKmh - currentSpeed;
+      // Calculate speed drop from the peak speed within the last 3 seconds
+      double peakRecentSpeed = currentSpeed;
+      if (_speedHistory.isNotEmpty) {
+        peakRecentSpeed = _speedHistory.map((r) => r.speed).reduce((a, b) => a > b ? a : b);
+      }
+
+      final speedDrop = peakRecentSpeed - currentSpeed;
       final gForceExceeded = gForce >= thresholds.gForceThreshold;
       final gyroExceeded = angularVelocity >= thresholds.gyroThreshold;
       final speedDropExceeded = speedDrop >= thresholds.speedDropKmh;
 
-      // All three conditions must be met simultaneously
       if (speedDropExceeded && gForceExceeded && gyroExceeded) {
         _fireCrash(
-          speedBefore: _previousSpeedKmh,
+          speedBefore: peakRecentSpeed,
           speedAfter: currentSpeed,
           gForce: gForce,
           angularVelocity: angularVelocity,
         );
         return;
       }
-
-      // Keep rolling speed window
-      _previousSpeedKmh = currentSpeed;
     }
   }
 
@@ -158,11 +160,17 @@ class CrashDetectorService {
 
   void resetAfterAlert() {
     _state = DetectionState.idle;
-    _previousSpeedKmh = 0;
+    _speedHistory.clear();
     _armedAt = null;
   }
 
   void dispose() {
     stopMonitoring();
   }
+}
+
+class _SpeedRecord {
+  final DateTime time;
+  final double speed;
+  _SpeedRecord({required this.time, required this.speed});
 }
