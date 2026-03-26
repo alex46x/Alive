@@ -1,0 +1,43 @@
+name: crash_detector
+description: "Crash Detector (Test Version) - Accident detection demo"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Location & speed
+  geolocator: ^13.0.2
+
+  # Accelerometer + Gyroscope
+  sensors_plus: ^6.1.0
+
+  # Vibration
+  vibration: ^2.0.0
+
+  # Audio alarm
+  audioplayers: ^6.1.0
+
+  # Runtime permissions
+  permission_handler: ^11.3.1
+
+  # Wakelock (keep screen on during alert)
+  wakelock_plus: ^1.2.10
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/sounds/

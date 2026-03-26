@@ -1,0 +1,8 @@
+﻿Analyzing lib...
+
+  error - screens\settings_screen.dart:312:29 - The argument type 'WidgetStatePropertyAll<Color>' can't be assigned to the parameter type 'Color?'.  - argument_type_not_assignable
+   info - screens\home_screen.dart:108:26 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+   info - screens\home_screen.dart:108:30 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+   info - screens\home_screen.dart:117:44 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+
+4 issues found.
