@@ -31,6 +31,12 @@ dependencies:
   # Wakelock (keep screen on during alert)
   wakelock_plus: ^1.2.10
 
+  # Persist user settings (thresholds, emergency number)
+  shared_preferences: ^2.3.2
+
+  # Background foreground service so detection survives screen-off / app backgrounded
+  flutter_foreground_task: ^9.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

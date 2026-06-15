@@ -28,12 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _thresholds = DetectionThresholds(
-      minSpeedKmh: widget.thresholds.minSpeedKmh,
-      speedDropKmh: widget.thresholds.speedDropKmh,
-      gForceThreshold: widget.thresholds.gForceThreshold,
-      gyroThreshold: widget.thresholds.gyroThreshold,
-    );
+    // Copy every field so we have a working draft of the thresholds
+    _thresholds = widget.thresholds.copyWith();
     _detectionEnabled = widget.detectionEnabled;
   }
 
@@ -60,6 +56,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          _sectionHeader('Emergency Action'),
+          const SizedBox(height: 12),
+          _textFieldCard(
+            label: 'Emergency Contact Number',
+            subtitle:
+                'This number will be dialed and SMSed if you do not cancel an alert',
+            hintText: 'e.g. +88019...',
+            initialValue: _thresholds.emergencyNumber,
+            onChanged: (v) {
+              _thresholds.emergencyNumber = v;
+              _notifyChange();
+            },
+          ),
+          const SizedBox(height: 24),
+
           // Enable toggle
           _sectionHeader('Detection Control'),
           const SizedBox(height: 12),
@@ -111,12 +122,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 24),
 
+          _sectionHeader('2-Stage Detection'),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+            child: Text(
+              'Stage 1: hard impact opens a verification window. '
+              'Stage 2: GPS speed-drop confirms the crash inside that window.',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          _sliderCard(
+            label: 'Hard Impact G',
+            subtitle: 'Strict G spike that opens the verification window',
+            value: _thresholds.hardImpactG,
+            unit: 'g',
+            min: 2.0,
+            max: 8.0,
+            divisions: 24,
+            decimalPlaces: 1,
+            onChanged: (v) => setState(() {
+              _thresholds.hardImpactG = v;
+              _notifyChange();
+            }),
+            accentColor: const Color(0xFFEF5350),
+          ),
+
+          const SizedBox(height: 16),
+
+          _sliderCard(
+            label: 'Hard Impact Gyro',
+            subtitle: 'Strict angular-velocity spike that opens the window',
+            value: _thresholds.hardImpactGyro,
+            unit: 'rad/s',
+            min: 3.0,
+            max: 15.0,
+            divisions: 24,
+            decimalPlaces: 1,
+            onChanged: (v) => setState(() {
+              _thresholds.hardImpactGyro = v;
+              _notifyChange();
+            }),
+            accentColor: const Color(0xFFFF8A65),
+          ),
+
+          const SizedBox(height: 16),
+
+          _sliderCard(
+            label: 'Verification Window',
+            subtitle:
+                'How long after the impact to wait for GPS-confirmed speed drop',
+            value: _thresholds.verificationWindowMs.toDouble(),
+            unit: 'ms',
+            min: 1000,
+            max: 6000,
+            divisions: 10,
+            step: 500,
+            onChanged: (v) => setState(() {
+              _thresholds.verificationWindowMs = v.round();
+              _notifyChange();
+            }),
+            accentColor: const Color(0xFF80DEEA),
+          ),
+
+          const SizedBox(height: 24),
+
           _sectionHeader('Sensor Thresholds'),
           const SizedBox(height: 12),
 
           _sliderCard(
-            label: 'G-Force Threshold',
-            subtitle: 'Minimum impact force to detect',
+            label: 'Linear G-Force Threshold',
+            subtitle: 'Minimum impact force to detect (gravity removed)',
             value: _thresholds.gForceThreshold,
             unit: 'g',
             min: 1.5,
@@ -146,6 +224,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _notifyChange();
             }),
             accentColor: const Color(0xFFA5D6A7),
+          ),
+
+          const SizedBox(height: 16),
+
+          _sliderCard(
+            label: 'Tilt Rate Threshold',
+            subtitle:
+                'Roll/flip rate (°/s) — only used if "Use tilt signal" is on',
+            value: _thresholds.tiltThresholdDegPerSec,
+            unit: '°/s',
+            min: 30,
+            max: 360,
+            divisions: 33,
+            onChanged: _thresholds.useTiltSignal
+                ? (v) => setState(() {
+                      _thresholds.tiltThresholdDegPerSec = v;
+                      _notifyChange();
+                    })
+                : null,
+            accentColor: const Color(0xFFFFD54F),
+          ),
+
+          const SizedBox(height: 24),
+
+          _sectionHeader('Decision Logic'),
+          const SizedBox(height: 12),
+
+          _sliderCard(
+            label: 'Confirmation Window',
+            subtitle: 'How long all conditions must hold before triggering',
+            value: _thresholds.confirmationMs.toDouble(),
+            unit: 'ms',
+            min: 0,
+            max: 2000,
+            divisions: 20,
+            step: 100,
+            onChanged: (v) => setState(() {
+              _thresholds.confirmationMs = v.round();
+              _notifyChange();
+            }),
+            accentColor: const Color(0xFFCE93D8),
+          ),
+
+          const SizedBox(height: 16),
+
+          _toggleCard(
+            'Adaptive Thresholds',
+            'Lower the G threshold at higher speeds (highway = less sensitive)',
+            _thresholds.adaptiveThresholds,
+            (v) {
+              setState(() {
+                _thresholds.adaptiveThresholds = v;
+                _notifyChange();
+              });
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          _toggleCard(
+            'Use Tilt Signal',
+            'Require a high roll/flip rate as a third condition (off = 2-of-2, on = 2-of-3)',
+            _thresholds.useTiltSignal,
+            (v) {
+              setState(() {
+                _thresholds.useTiltSignal = v;
+                _notifyChange();
+              });
+            },
           ),
 
           const SizedBox(height: 32),
@@ -263,13 +410,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required double min,
     required double max,
     required int divisions,
-    required ValueChanged<double> onChanged,
+    required ValueChanged<double>? onChanged,
     required Color accentColor,
     int decimalPlaces = 0,
+    double step = 1,
   }) {
     final displayValue = decimalPlaces == 0
         ? value.toInt().toString()
         : value.toStringAsFixed(decimalPlaces);
+
+    final disabled = onChanged == null;
 
     return Container(
       decoration: BoxDecoration(
@@ -284,21 +434,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(label,
-                  style: const TextStyle(
-                      color: Colors.white,
+                  style: TextStyle(
+                      color: disabled ? Colors.white38 : Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 15)),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.2),
+                  color: accentColor.withValues(alpha: disabled ? 0.08 : 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   '$displayValue $unit',
                   style: TextStyle(
-                      color: accentColor,
+                      color: disabled
+                          ? accentColor.withValues(alpha: 0.4)
+                          : accentColor,
                       fontSize: 13,
                       fontWeight: FontWeight.bold),
                 ),
@@ -307,12 +459,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 2),
           Text(subtitle,
-              style:
-                  const TextStyle(color: Colors.white54, fontSize: 12)),
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: accentColor,
-              thumbColor: accentColor,
+              activeTrackColor:
+                  disabled ? accentColor.withValues(alpha: 0.3) : accentColor,
+              thumbColor:
+                  disabled ? accentColor.withValues(alpha: 0.3) : accentColor,
               inactiveTrackColor: accentColor.withValues(alpha: 0.2),
               overlayColor: accentColor.withValues(alpha: 0.1),
             ),
@@ -323,6 +476,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
               divisions: divisions,
               onChanged: onChanged,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _textFieldCard({
+    required String label,
+    required String subtitle,
+    required String hintText,
+    required String initialValue,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15)),
+          const SizedBox(height: 2),
+          Text(subtitle,
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 12),
+          TextFormField(
+            initialValue: initialValue,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Colors.white24, letterSpacing: 0),
+              filled: true,
+              fillColor: const Color(0xFF0F0F1A),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
+              ),
+              prefixIcon:
+                  const Icon(Icons.emergency, color: Colors.redAccent, size: 20),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: onChanged,
           ),
         ],
       ),

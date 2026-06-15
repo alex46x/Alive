@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationService {
@@ -15,6 +16,7 @@ class LocationService {
 
   double get currentSpeedKmh => _currentSpeedKmh;
   double get previousSpeedKmh => _previousSpeedKmh;
+  Position? get currentPosition => _previousPosition;
 
   /// Start GPS streaming
   Future<void> start() async {
@@ -40,7 +42,7 @@ class LocationService {
       
       // 1. Filter out highly inaccurate GPS points (e.g. indoors/bad signal)
       if (position.accuracy > 20.0) {
-        print('Ignored inaccurate GPS point: ${position.accuracy}m');
+        debugPrint('Ignored inaccurate GPS point: ${position.accuracy}m');
         return;
       }
 
@@ -64,7 +66,7 @@ class LocationService {
           // Ignore tiny positional jitter (< 3 meters) to prevent fake speeds while standing still
           if (distanceMeters > 3.0) { 
             rawSpeed = distanceMeters / timeDiffSeconds;
-            print('Calculated manual speed: $rawSpeed m/s');
+            debugPrint('Calculated manual speed: $rawSpeed m/s');
           } else {
             rawSpeed = 0.0; // Snap to 0 if we didn't move far enough
           }
@@ -82,7 +84,7 @@ class LocationService {
         _currentSpeedKmh = newSpeedKmh;
       }
 
-      print('Final Smoothed Speed: $_currentSpeedKmh km/h (Raw was $newSpeedKmh)');
+      debugPrint('Final Smoothed Speed: $_currentSpeedKmh km/h (Raw was $newSpeedKmh)');
 
       _speedController.add(_currentSpeedKmh);
       

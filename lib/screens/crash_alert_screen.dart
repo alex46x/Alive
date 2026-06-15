@@ -2,16 +2,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/alert_service.dart';
 import '../models/sensor_data.dart';
+import 'package:flutter/services.dart';
 
 class CrashAlertScreen extends StatefulWidget {
   final CrashEvent event;
   final AlertService alertService;
+  final String emergencyNumber;
   final VoidCallback onDismissed;
 
   const CrashAlertScreen({
     super.key,
     required this.event,
     required this.alertService,
+    required this.emergencyNumber,
     required this.onDismissed,
   });
 
@@ -48,9 +51,37 @@ class _CrashAlertScreenState extends State<CrashAlertScreen>
       if (!mounted) return;
       setState(() => _remaining--);
       if (_remaining <= 0) {
-        _dismiss();
+        _countdownTimer?.cancel();
+        _executeEmergencyProtocol();
       }
     });
+  }
+
+  Future<void> _executeEmergencyProtocol() async {
+    widget.alertService.stopAlert();
+    
+    // Only execute if a number was provided
+    if (widget.emergencyNumber.isNotEmpty) {
+      const platform = MethodChannel('com.crashdetector/sos');
+      final message = 'Emergency! I may have been in a car accident. '
+          'My location: https://maps.google.com/?q=${widget.event.latitude},${widget.event.longitude}';
+
+      try {
+        await platform.invokeMethod('sendSms', {
+          'number': widget.emergencyNumber,
+          'message': message,
+        });
+        await platform.invokeMethod('makeCall', {
+          'number': widget.emergencyNumber,
+        });
+      } on PlatformException catch (e) {
+        debugPrint("Failed to execute emergency protocol: '${e.message}'.");
+      }
+    }
+
+    if (mounted) {
+      widget.onDismissed();
+    }
   }
 
   void _dismiss() {
